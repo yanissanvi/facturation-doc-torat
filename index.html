@@ -104,9 +104,9 @@
     tg.expand();
     tg.MainButton.setText("GÉNÉRER LA FACTURE").show();
 
-    // 1. Gestion des mémoires locales (Parents & Tuteurs)
+    // 1. Mémoire locale des Parents et Tuteurs
     const PARENTS_DEFAUT = [" "];
-    const TUTEURS_DEFAUT = ["Ohini Yanis Sanvi"];
+    const TUTEURS_DEFAUT = [" "];
 
     function chargerListes() {
       let parents = JSON.parse(localStorage.getItem("doc_torat_parents")) || PARENTS_DEFAUT;
@@ -137,7 +137,7 @@
       }
     }
 
-    // 2. Gestion des services
+    // 2. Catalogue des prestations
     const SERVICES = [
       "Session à l'unité (Présentiel - 1h)",
       "Session à l'unité (Présentiel - 1h30)",
@@ -211,16 +211,19 @@
     chargerListes();
     ajouterLigneService();
 
-    // 3. Soumission vers Telegram
+    // 3. Soumission et reset propre
     tg.onEvent('mainButtonClicked', () => {
-      const parentNom = document.getElementById("parent").value.trim();
-      const tuteurNom = document.getElementById("tuteur").value.trim();
+      const parentInput = document.getElementById("parent");
+      const tuteurInput = document.getElementById("tuteur");
+      const parentNom = parentInput.value.trim();
+      const tuteurNom = tuteurInput.value.trim();
 
       if (!parentNom) {
         tg.showAlert("Veuillez renseigner le nom du parent.");
         return;
       }
 
+      tg.MainButton.showProgress();
       memoriserEntrees(parentNom, tuteurNom);
 
       const servicesElems = document.querySelectorAll(".ligne-service");
@@ -253,7 +256,16 @@
       };
 
       tg.sendData(JSON.stringify(payload));
-      tg.close();
+
+      // Réinitialisation des champs pour la prochaine ouverture
+      parentInput.value = "";
+      document.getElementById("services-container").innerHTML = "";
+      ajouterLigneService();
+      tg.MainButton.hideProgress();
+
+      setTimeout(() => {
+        tg.close();
+      }, 100);
     });
   </script>
 </body>
