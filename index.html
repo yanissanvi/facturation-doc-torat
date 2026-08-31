@@ -67,11 +67,6 @@
       padding: 0;
       margin-bottom: 8px;
     }
-    .toggle-wrap {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
   </style>
 </head>
 <body>
@@ -94,9 +89,18 @@
     <button type="button" class="btn-add" onclick="ajouterLigneService()">+ Ajouter une prestation</button>
   </div>
 
-  <div class="card toggle-wrap">
-    <label for="est_paye" style="margin:0;">Statut : Facture déjà payée</label>
-    <input type="checkbox" id="est_paye" checked style="width: auto; margin: 0;">
+  <div class="card">
+    <label for="statut_reglement">Statut du règlement</label>
+    <select id="statut_reglement" onchange="toggleMontantPartiel()">
+      <option value="totalite" selected>Payé en totalité</option>
+      <option value="partiel">Partiellement payé</option>
+      <option value="non_paye">Non payé (En attente)</option>
+    </select>
+
+    <div id="champ-montant-partiel" style="display: none;">
+      <label for="montant_partiel">Montant déjà acquitté ($)</label>
+      <input type="number" id="montant_partiel" placeholder="ex: 50" step="0.01" min="0">
+    </div>
   </div>
 
   <script>
@@ -104,9 +108,14 @@
     tg.expand();
     tg.MainButton.setText("GÉNÉRER LA FACTURE").show();
 
-    // 1. Mémoire locale des Parents et Tuteurs
     const PARENTS_DEFAUT = [" "];
     const TUTEURS_DEFAUT = [" "];
+
+    function toggleMontantPartiel() {
+      const statut = document.getElementById("statut_reglement").value;
+      const blocPartiel = document.getElementById("champ-montant-partiel");
+      blocPartiel.style.display = (statut === "partiel") ? "block" : "none";
+    }
 
     function chargerListes() {
       let parents = JSON.parse(localStorage.getItem("doc_torat_parents")) || PARENTS_DEFAUT;
@@ -119,7 +128,7 @@
       dlTuteurs.innerHTML = tuteurs.map(t => `<option value="${t}">`).join("");
 
       if (!document.getElementById("tuteur").value) {
-        document.getElementById("tuteur").value = "Ohini Yanis Sanvi";
+        document.getElementById("tuteur").value = " ";
       }
     }
 
@@ -137,7 +146,6 @@
       }
     }
 
-    // 2. Catalogue des prestations
     const SERVICES = [
       "Session à l'unité (Présentiel - 1h)",
       "Session à l'unité (Présentiel - 1h30)",
@@ -176,7 +184,7 @@
       div.innerHTML = `
         <div style="display: flex; justify-content: space-between;">
           <label>Service</label>
-          ${container.children.length > 0 ? '<button class="btn-delete" onclick="this.closest(\'.ligne-service\').remove()">Supprimer</button>' : ''}
+          ${container.children.length > 0 ? '<button type="button" class="btn-delete" onclick="this.closest(\'.ligne-service\').remove()">Supprimer</button>' : ''}
         </div>
         <select class="service-select" onchange="autoAjusterQte(this)">${options}</select>
         <div style="display: flex; gap: 8px;">
@@ -207,11 +215,9 @@
       else qteInput.value = 1.0;
     }
 
-    // Initialisation
     chargerListes();
     ajouterLigneService();
 
-    // 3. Soumission et reset propre
     tg.onEvent('mainButtonClicked', () => {
       const parentInput = document.getElementById("parent");
       const tuteurInput = document.getElementById("tuteur");
@@ -247,18 +253,24 @@
         });
       });
 
+      const statutReglement = document.getElementById("statut_reglement").value;
+      const montantPartiel = parseFloat(document.getElementById("montant_partiel").value) || 0.0;
+
       const payload = {
         action: "creer",
         parent: parentNom,
         tuteur: tuteurNom,
-        est_paye: document.getElementById("est_paye").checked,
+        statut_reglement: statutReglement,
+        montant_partiel: montantPartiel,
         prestations: prestations
       };
 
       tg.sendData(JSON.stringify(payload));
 
-      // Réinitialisation des champs pour la prochaine ouverture
       parentInput.value = "";
+      document.getElementById("statut_reglement").value = "totalite";
+      document.getElementById("montant_partiel").value = "";
+      toggleMontantPartiel();
       document.getElementById("services-container").innerHTML = "";
       ajouterLigneService();
       tg.MainButton.hideProgress();
