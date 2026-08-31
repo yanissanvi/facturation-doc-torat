@@ -105,8 +105,8 @@
     tg.MainButton.setText("GÉNÉRER LA FACTURE").show();
 
     // 1. Gestion des mémoires locales (Parents & Tuteurs)
-    const PARENTS_DEFAUT = ["Dupont Jean", "Tremblay Marc"];
-    const TUTEURS_DEFAUT = ["Ohini Yanis Sanvi", "Thomas", "Sarah", "Alexandre"];
+    const PARENTS_DEFAUT = [" "];
+    const TUTEURS_DEFAUT = ["Ohini Yanis Sanvi"];
 
     function chargerListes() {
       let parents = JSON.parse(localStorage.getItem("doc_torat_parents")) || PARENTS_DEFAUT;
