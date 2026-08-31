@@ -11,7 +11,6 @@
       --card-bg: var(--tg-theme-secondary-bg-color, #ffffff);
       --text-color: var(--tg-theme-text-color, #1a1a1a);
       --primary: var(--tg-theme-button-color, #2563eb);
-      --primary-text: var(--tg-theme-button-text-color, #ffffff);
       --border: #e2e8f0;
       --danger: #ef4444;
     }
@@ -30,7 +29,7 @@
       margin-bottom: 16px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    h2, h3 { margin-top: 0; font-size: 1.1rem; }
+    h3 { margin-top: 0; font-size: 1.1rem; }
     label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; opacity: 0.8; }
     input, select {
       width: 100%;
@@ -47,7 +46,6 @@
       border-left: 3px solid var(--primary);
       padding-left: 10px;
       margin-bottom: 16px;
-      position: relative;
     }
     .btn-add {
       background: none;
@@ -80,23 +78,18 @@
 
   <div class="card">
     <h3>Client & Tuteur</h3>
-    <label for="parent">Nom complet du Parent</label>
-    <input type="text" id="parent" placeholder="ex: Dupont Jean" required>
+    
+    <label for="parent">Parent / Client (choisir ou écrire)</label>
+    <input list="liste-parents" id="parent" placeholder="Rechercher ou saisir un nom..." required>
+    <datalist id="liste-parents"></datalist>
 
-    <label for="tuteur">Tuteur</label>
-    <select id="tuteur">
-      <option value="Ohini Yanis Sanvi" selected>Ohini Yanis Sanvi</option>
-      <option value="Thomas">Thomas</option>
-      <option value="Sarah">Sarah</option>
-      <option value="Alexandre">Alexandre</option>
-    </select>
+    <label for="tuteur">Tuteur (choisir ou écrire)</label>
+    <input list="liste-tuteurs" id="tuteur" placeholder="Rechercher ou saisir un tuteur..." required>
+    <datalist id="liste-tuteurs"></datalist>
   </div>
 
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-      <h3 style="margin: 0;">Prestations</h3>
-    </div>
-    
+    <h3 style="margin-bottom: 12px;">Prestations</h3>
     <div id="services-container"></div>
     <button type="button" class="btn-add" onclick="ajouterLigneService()">+ Ajouter une prestation</button>
   </div>
@@ -111,6 +104,40 @@
     tg.expand();
     tg.MainButton.setText("GÉNÉRER LA FACTURE").show();
 
+    // 1. Gestion des mémoires locales (Parents & Tuteurs)
+    const PARENTS_DEFAUT = ["Dupont Jean", "Tremblay Marc"];
+    const TUTEURS_DEFAUT = ["Ohini Yanis Sanvi", "Thomas", "Sarah", "Alexandre"];
+
+    function chargerListes() {
+      let parents = JSON.parse(localStorage.getItem("doc_torat_parents")) || PARENTS_DEFAUT;
+      let tuteurs = JSON.parse(localStorage.getItem("doc_torat_tuteurs")) || TUTEURS_DEFAUT;
+
+      const dlParents = document.getElementById("liste-parents");
+      const dlTuteurs = document.getElementById("liste-tuteurs");
+
+      dlParents.innerHTML = parents.map(p => `<option value="${p}">`).join("");
+      dlTuteurs.innerHTML = tuteurs.map(t => `<option value="${t}">`).join("");
+
+      if (!document.getElementById("tuteur").value) {
+        document.getElementById("tuteur").value = "Ohini Yanis Sanvi";
+      }
+    }
+
+    function memoriserEntrees(parentNom, tuteurNom) {
+      let parents = JSON.parse(localStorage.getItem("doc_torat_parents")) || PARENTS_DEFAUT;
+      let tuteurs = JSON.parse(localStorage.getItem("doc_torat_tuteurs")) || TUTEURS_DEFAUT;
+
+      if (parentNom && !parents.includes(parentNom)) {
+        parents.push(parentNom);
+        localStorage.setItem("doc_torat_parents", JSON.stringify(parents));
+      }
+      if (tuteurNom && !tuteurs.includes(tuteurNom)) {
+        tuteurs.push(tuteurNom);
+        localStorage.setItem("doc_torat_tuteurs", JSON.stringify(tuteurs));
+      }
+    }
+
+    // 2. Gestion des services
     const SERVICES = [
       "Session à l'unité (Présentiel - 1h)",
       "Session à l'unité (Présentiel - 1h30)",
@@ -138,17 +165,13 @@
       "Préparation BREVET-BAC (20 heures - En ligne)"
     ];
 
-    function formaterDateAujourdhui() {
-      const today = new Date();
-      return today.toISOString().split('T')[0];
-    }
-
     function ajouterLigneService() {
       const container = document.getElementById("services-container");
       const div = document.createElement("div");
       div.className = "ligne-service";
 
       let options = SERVICES.map(s => `<option value="${s}">${s}</option>`).join("");
+      const today = new Date().toISOString().split('T')[0];
 
       div.innerHTML = `
         <div style="display: flex; justify-content: space-between;">
@@ -163,7 +186,7 @@
           </div>
           <div style="flex: 1.5;">
             <label>Date</label>
-            <input type="date" class="service-date" value="${formaterDateAujourdhui()}">
+            <input type="date" class="service-date" value="${today}">
           </div>
         </div>
       `;
@@ -184,14 +207,21 @@
       else qteInput.value = 1.0;
     }
 
+    // Initialisation
+    chargerListes();
     ajouterLigneService();
 
+    // 3. Soumission vers Telegram
     tg.onEvent('mainButtonClicked', () => {
       const parentNom = document.getElementById("parent").value.trim();
+      const tuteurNom = document.getElementById("tuteur").value.trim();
+
       if (!parentNom) {
         tg.showAlert("Veuillez renseigner le nom du parent.");
         return;
       }
+
+      memoriserEntrees(parentNom, tuteurNom);
 
       const servicesElems = document.querySelectorAll(".ligne-service");
       const prestations = [];
@@ -217,7 +247,7 @@
       const payload = {
         action: "creer",
         parent: parentNom,
-        tuteur: document.getElementById("tuteur").value,
+        tuteur: tuteurNom,
         est_paye: document.getElementById("est_paye").checked,
         prestations: prestations
       };
