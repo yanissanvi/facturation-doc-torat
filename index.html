@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facturation Doc-torat</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-color: var(--tg-theme-bg-color, #f4f5f7);
+      --card-bg: var(--tg-theme-secondary-bg-color, #ffffff);
+      --text-color: var(--tg-theme-text-color, #1a1a1a);
+      --primary: var(--tg-theme-button-color, #2563eb);
+      --primary-text: var(--tg-theme-button-text-color, #ffffff);
+      --border: #e2e8f0;
+      --danger: #ef4444;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    h2, h3 { margin-top: 0; font-size: 1.1rem; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; opacity: 0.8; }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+      background: var(--card-bg);
+      color: var(--text-color);
+    }
+    .ligne-service {
+      border-left: 3px solid var(--primary);
+      padding-left: 10px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .btn-add {
+      background: none;
+      border: 1px dashed var(--primary);
+      color: var(--primary);
+      padding: 10px;
+      width: 100%;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-delete {
+      color: var(--danger);
+      background: none;
+      border: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 8px;
+    }
+    .toggle-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h3>Client & Tuteur</h3>
+    <label for="parent">Nom complet du Parent</label>
+    <input type="text" id="parent" placeholder="ex: Dupont Jean" required>
+
+    <label for="tuteur">Tuteur</label>
+    <select id="tuteur">
+      <option value="Ohini Yanis Sanvi" selected>Ohini Yanis Sanvi</option>
+      <option value="Thomas">Thomas</option>
+      <option value="Sarah">Sarah</option>
+      <option value="Alexandre">Alexandre</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <h3 style="margin: 0;">Prestations</h3>
+    </div>
+    
+    <div id="services-container"></div>
+    <button type="button" class="btn-add" onclick="ajouterLigneService()">+ Ajouter une prestation</button>
+  </div>
+
+  <div class="card toggle-wrap">
+    <label for="est_paye" style="margin:0;">Statut : Facture déjà payée</label>
+    <input type="checkbox" id="est_paye" checked style="width: auto; margin: 0;">
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    tg.MainButton.setText("GÉNÉRER LA FACTURE").show();
+
+    const SERVICES = [
+      "Session à l'unité (Présentiel - 1h)",
+      "Session à l'unité (Présentiel - 1h30)",
+      "Session à l'unité (Présentiel - 2h)",
+      "Session à l'unité (En ligne - 1h)",
+      "Session à l'unité (En ligne - 1h30)",
+      "Session à l'unité (En ligne - 2h)",
+      "Préparation BREVET-BAC (Présentiel - 1h)",
+      "Préparation BREVET-BAC (Présentiel - 1h30)",
+      "Préparation BREVET-BAC (Présentiel - 2h)",
+      "Préparation BREVET-BAC (En ligne - 1h)",
+      "Préparation BREVET-BAC (En ligne - 1h30)",
+      "Préparation BREVET-BAC (En ligne - 2h)",
+      "Abonnement (5 heures - Présentiel)",
+      "Abonnement (5 heures - En ligne)",
+      "Abonnement (10 heures - Présentiel)",
+      "Abonnement (10 heures - En ligne)",
+      "Abonnement (20 heures - Présentiel)",
+      "Abonnement (20 heures - En ligne)",
+      "Préparation BREVET-BAC (5 heures - Présentiel)",
+      "Préparation BREVET-BAC (5 heures - En ligne)",
+      "Préparation BREVET-BAC (10 heures - Présentiel)",
+      "Préparation BREVET-BAC (10 heures - En ligne)",
+      "Préparation BREVET-BAC (20 heures - Présentiel)",
+      "Préparation BREVET-BAC (20 heures - En ligne)"
+    ];
+
+    function formaterDateAujourdhui() {
+      const today = new Date();
+      return today.toISOString().split('T')[0];
+    }
+
+    function ajouterLigneService() {
+      const container = document.getElementById("services-container");
+      const div = document.createElement("div");
+      div.className = "ligne-service";
+
+      let options = SERVICES.map(s => `<option value="${s}">${s}</option>`).join("");
+
+      div.innerHTML = `
+        <div style="display: flex; justify-content: space-between;">
+          <label>Service</label>
+          ${container.children.length > 0 ? '<button class="btn-delete" onclick="this.closest(\'.ligne-service\').remove()">Supprimer</button>' : ''}
+        </div>
+        <select class="service-select" onchange="autoAjusterQte(this)">${options}</select>
+        <div style="display: flex; gap: 8px;">
+          <div style="flex: 1;">
+            <label>Quantité (h)</label>
+            <input type="number" class="service-qte" value="1" step="0.5" min="0.5">
+          </div>
+          <div style="flex: 1.5;">
+            <label>Date</label>
+            <input type="date" class="service-date" value="${formaterDateAujourdhui()}">
+          </div>
+        </div>
+      `;
+      container.appendChild(div);
+      autoAjusterQte(div.querySelector('.service-select'));
+    }
+
+    function autoAjusterQte(selectElem) {
+      const parent = selectElem.closest('.ligne-service');
+      const qteInput = parent.querySelector('.service-qte');
+      const val = selectElem.value;
+
+      if (val.includes("1h30")) qteInput.value = 1.5;
+      else if (val.includes("2h")) qteInput.value = 2.0;
+      else if (val.includes("5 heures")) qteInput.value = 5.0;
+      else if (val.includes("10 heures")) qteInput.value = 10.0;
+      else if (val.includes("20 heures")) qteInput.value = 20.0;
+      else qteInput.value = 1.0;
+    }
+
+    ajouterLigneService();
+
+    tg.onEvent('mainButtonClicked', () => {
+      const parentNom = document.getElementById("parent").value.trim();
+      if (!parentNom) {
+        tg.showAlert("Veuillez renseigner le nom du parent.");
+        return;
+      }
+
+      const servicesElems = document.querySelectorAll(".ligne-service");
+      const prestations = [];
+
+      servicesElems.forEach(el => {
+        const srv = el.querySelector(".service-select").value;
+        const qte = parseFloat(el.querySelector(".service-qte").value) || 1.0;
+        const rawDate = el.querySelector(".service-date").value;
+        
+        let dateFormatee = "";
+        if (rawDate) {
+          const parts = rawDate.split("-");
+          dateFormatee = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        prestations.push({
+          service: srv,
+          quantite: qte,
+          date_prestation: dateFormatee
+        });
+      });
+
+      const payload = {
+        action: "creer",
+        parent: parentNom,
+        tuteur: document.getElementById("tuteur").value,
+        est_paye: document.getElementById("est_paye").checked,
+        prestations: prestations
+      };
+
+      tg.sendData(JSON.stringify(payload));
+      tg.close();
+    });
+  </script>
+</body>
+</html>
