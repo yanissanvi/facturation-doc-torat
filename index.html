@@ -71,54 +71,96 @@
 </head>
 <body>
 
+  <!-- CHOIX DU TYPE D'OPÉRATION -->
   <div class="card">
-    <h3>Client & Tuteur</h3>
-    
-    <label for="parent">Parent / Client (choisir ou écrire)</label>
-    <input list="liste-parents" id="parent" placeholder="Rechercher ou saisir un nom..." required>
-    <datalist id="liste-parents"></datalist>
-
-    <label for="tuteur">Tuteur (choisir ou écrire)</label>
-    <input list="liste-tuteurs" id="tuteur" placeholder="Rechercher ou saisir un tuteur..." required>
-    <datalist id="liste-tuteurs"></datalist>
+    <label for="type_action">Type d'opération</label>
+    <select id="type_action" onchange="changerModeFormulaire()">
+      <option value="creer" selected>➕ Nouvelle Facture</option>
+      <option value="maj">🔄 Encaisser un paiement (Mise à jour)</option>
+    </select>
   </div>
 
-  <div class="card">
-    <h3 style="margin-bottom: 12px;">Prestations</h3>
-    <div id="services-container"></div>
-    <button type="button" class="btn-add" onclick="ajouterLigneService()">+ Ajouter une prestation</button>
+  <!-- BLOCS POUR CRÉATION NOUVELLE FACTURE -->
+  <div id="section-creation">
+    <div class="card">
+      <h3>Client & Tuteur</h3>
+      <label for="parent">Parent / Client (choisir ou écrire)</label>
+      <input list="liste-parents" id="parent" placeholder="Rechercher ou saisir un nom...">
+      <datalist id="liste-parents"></datalist>
+
+      <label for="tuteur">Tuteur (choisir ou écrire)</label>
+      <input list="liste-tuteurs" id="tuteur" placeholder="Rechercher ou saisir un tuteur...">
+      <datalist id="liste-tuteurs"></datalist>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom: 12px;">Prestations</h3>
+      <div id="services-container"></div>
+      <button type="button" class="btn-add" onclick="ajouterLigneService()">+ Ajouter une prestation</button>
+    </div>
+
+    <div class="card">
+      <h3>Règlement</h3>
+      <label for="statut_reglement">Statut du règlement</label>
+      <select id="statut_reglement" onchange="toggleMontantPartiel()">
+        <option value="totalite" selected>Payé en totalité</option>
+        <option value="partiel">Partiellement payé</option>
+        <option value="non_paye">Non payé (En attente)</option>
+      </select>
+
+      <label for="mode_paiement">Mode de paiement</label>
+      <select id="mode_paiement">
+        <option value="Virement Interac" selected>Virement Interac</option>
+        <option value="En espèces">En espèces</option>
+        <option value="Chèque">Chèque</option>
+      </select>
+
+      <div id="champ-montant-partiel" style="display: none; margin-top: 8px;">
+        <label for="montant_partiel">Montant déjà acquitté ($)</label>
+        <input type="number" id="montant_partiel" placeholder="ex: 50" step="0.01" min="0">
+      </div>
+    </div>
   </div>
 
-  <div class="card">
-    <h3>Règlement</h3>
+  <!-- BLOC POUR MISE À JOUR D'UNE FACTURE EXISTANTE -->
+  <div id="section-maj" style="display: none;">
+    <div class="card">
+      <h3>Mise à jour d'un solde</h3>
+      <label for="maj_num_facture">Numéro de la facture (ex: 211 ou 00000211)</label>
+      <input type="text" id="maj_num_facture" placeholder="ex: 00000211">
 
-    <label for="statut_reglement">Statut du règlement</label>
-    <select id="statut_reglement" onchange="toggleMontantPartiel()">
-      <option value="totalite" selected>Payé en totalité</option>
-      <option value="partiel">Partiellement payé</option>
-      <option value="non_paye">Non payé (En attente)</option>
-    </select>
+      <label for="maj_montant_cumule">Montant TOTAL payé à ce jour ($)</label>
+      <input type="number" id="maj_montant_cumule" placeholder="ex: 100" step="0.01" min="0">
 
-    <label for="mode_paiement">Mode de paiement</label>
-    <select id="mode_paiement">
-      <option value="Virement Interac" selected>Virement Interac</option>
-      <option value="En espèces">En espèces</option>
-      <option value="Chèque">Chèque</option>
-    </select>
-
-    <div id="champ-montant-partiel" style="display: none; margin-top: 8px;">
-      <label for="montant_partiel">Montant déjà acquitté ($)</label>
-      <input type="number" id="montant_partiel" placeholder="ex: 50" step="0.01" min="0">
+      <label for="maj_mode_paiement">Mode de paiement du dernier versement</label>
+      <select id="maj_mode_paiement">
+        <option value="Virement Interac" selected>Virement Interac</option>
+        <option value="En espèces">En espèces</option>
+        <option value="Chèque">Chèque</option>
+      </select>
     </div>
   </div>
 
   <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
-    tg.MainButton.setText("GÉNÉRER LA FACTURE").show();
+    tg.MainButton.setText("VALIDER L'OPÉRATION").show();
 
     const PARENTS_DEFAUT = [" "];
     const TUTEURS_DEFAUT = [" "];
+
+    function changerModeFormulaire() {
+      const type = document.getElementById("type_action").value;
+      if (type === "maj") {
+        document.getElementById("section-creation").style.display = "none";
+        document.getElementById("section-maj").style.display = "block";
+        tg.MainButton.setText("METTRE À JOUR LA FACTURE");
+      } else {
+        document.getElementById("section-creation").style.display = "block";
+        document.getElementById("section-maj").style.display = "none";
+        tg.MainButton.setText("GÉNÉRER LA FACTURE");
+      }
+    }
 
     function toggleMontantPartiel() {
       const statut = document.getElementById("statut_reglement").value;
@@ -228,68 +270,93 @@
     ajouterLigneService();
 
     tg.onEvent('mainButtonClicked', () => {
-      const parentInput = document.getElementById("parent");
-      const tuteurInput = document.getElementById("tuteur");
-      const parentNom = parentInput.value.trim();
-      const tuteurNom = tuteurInput.value.trim();
+      const actionChoisie = document.getElementById("type_action").value;
 
-      if (!parentNom) {
-        tg.showAlert("Veuillez renseigner le nom du parent.");
-        return;
-      }
+      if (actionChoisie === "maj") {
+        const numFact = document.getElementById("maj_num_facture").value.trim();
+        const montantCumule = parseFloat(document.getElementById("maj_montant_cumule").value) || 0;
+        const modePaiement = document.getElementById("maj_mode_paiement").value;
 
-      tg.MainButton.showProgress();
-      memoriserEntrees(parentNom, tuteurNom);
-
-      const servicesElems = document.querySelectorAll(".ligne-service");
-      const prestations = [];
-
-      servicesElems.forEach(el => {
-        const srv = el.querySelector(".service-select").value;
-        const qte = parseFloat(el.querySelector(".service-qte").value) || 1.0;
-        const rawDate = el.querySelector(".service-date").value;
-        
-        let dateFormatee = "";
-        if (rawDate) {
-          const parts = rawDate.split("-");
-          dateFormatee = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        if (!numFact || montantCumule <= 0) {
+          tg.showAlert("Veuillez renseigner le numéro de facture et le montant total payé.");
+          return;
         }
 
-        prestations.push({
-          service: srv,
-          quantite: qte,
-          date_prestation: dateFormatee
+        tg.MainButton.showProgress();
+        const payload = {
+          action: "maj",
+          no_facture: numFact,
+          montant_total_paye: montantCumule,
+          mode_paiement: modePaiement
+        };
+
+        tg.sendData(JSON.stringify(payload));
+        document.getElementById("maj_num_facture").value = "";
+        document.getElementById("maj_montant_cumule").value = "";
+        tg.MainButton.hideProgress();
+        setTimeout(() => tg.close(), 100);
+
+      } else {
+        const parentInput = document.getElementById("parent");
+        const tuteurInput = document.getElementById("tuteur");
+        const parentNom = parentInput.value.trim();
+        const tuteurNom = tuteurInput.value.trim();
+
+        if (!parentNom) {
+          tg.showAlert("Veuillez renseigner le nom du parent.");
+          return;
+        }
+
+        tg.MainButton.showProgress();
+        memoriserEntrees(parentNom, tuteurNom);
+
+        const servicesElems = document.querySelectorAll(".ligne-service");
+        const prestations = [];
+
+        servicesElems.forEach(el => {
+          const srv = el.querySelector(".service-select").value;
+          const qte = parseFloat(el.querySelector(".service-qte").value) || 1.0;
+          const rawDate = el.querySelector(".service-date").value;
+          
+          let dateFormatee = "";
+          if (rawDate) {
+            const parts = rawDate.split("-");
+            dateFormatee = `${parts[2]}/${parts[1]}/${parts[0]}`;
+          }
+
+          prestations.push({
+            service: srv,
+            quantite: qte,
+            date_prestation: dateFormatee
+          });
         });
-      });
 
-      const statutReglement = document.getElementById("statut_reglement").value;
-      const modePaiement = document.getElementById("mode_paiement").value;
-      const montantPartiel = parseFloat(document.getElementById("montant_partiel").value) || 0.0;
+        const statutReglement = document.getElementById("statut_reglement").value;
+        const modePaiement = document.getElementById("mode_paiement").value;
+        const montantPartiel = parseFloat(document.getElementById("montant_partiel").value) || 0.0;
 
-      const payload = {
-        action: "creer",
-        parent: parentNom,
-        tuteur: tuteurNom,
-        statut_reglement: statutReglement,
-        mode_paiement: modePaiement,
-        montant_partiel: montantPartiel,
-        prestations: prestations
-      };
+        const payload = {
+          action: "creer",
+          parent: parentNom,
+          tuteur: tuteurNom,
+          statut_reglement: statutReglement,
+          mode_paiement: modePaiement,
+          montant_partiel: montantPartiel,
+          prestations: prestations
+        };
 
-      tg.sendData(JSON.stringify(payload));
+        tg.sendData(JSON.stringify(payload));
 
-      parentInput.value = "";
-      document.getElementById("statut_reglement").value = "totalite";
-      document.getElementById("mode_paiement").value = "Virement Interac";
-      document.getElementById("montant_partiel").value = "";
-      toggleMontantPartiel();
-      document.getElementById("services-container").innerHTML = "";
-      ajouterLigneService();
-      tg.MainButton.hideProgress();
-
-      setTimeout(() => {
-        tg.close();
-      }, 100);
+        parentInput.value = "";
+        document.getElementById("statut_reglement").value = "totalite";
+        document.getElementById("mode_paiement").value = "Virement Interac";
+        document.getElementById("montant_partiel").value = "";
+        toggleMontantPartiel();
+        document.getElementById("services-container").innerHTML = "";
+        ajouterLigneService();
+        tg.MainButton.hideProgress();
+        setTimeout(() => tg.close(), 100);
+      }
     });
   </script>
 </body>
