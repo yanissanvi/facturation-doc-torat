@@ -75,12 +75,12 @@
   <div class="card">
     <label for="type_action">Type d'opération</label>
     <select id="type_action" onchange="changerModeFormulaire()">
-      <option value="creer" selected>➕ Émission</option>
-      <option value="maj">🔄 Mise à jour)</option>
+      <option value="creer" selected>➕ Nouvelle facture</option>
+      <option value="maj">🔄 Mise à jour facture (Paiement)</option>
     </select>
   </div>
 
-  <!-- BLOCS POUR CRÉATION NOUVELLE FACTURE -->
+  <!-- BLOCS CRÉATION NOUVELLE FACTURE -->
   <div id="section-creation">
     <div class="card">
       <h3>Client & Tuteur</h3>
@@ -122,17 +122,17 @@
     </div>
   </div>
 
-  <!-- BLOC POUR MISE À JOUR D'UNE FACTURE EXISTANTE -->
+  <!-- BLOC MISE À JOUR (PAIEMENT ÉCHELONNÉ) -->
   <div id="section-maj" style="display: none;">
     <div class="card">
       <h3>Mise à jour d'un solde</h3>
       <label for="maj_num_facture">Numéro de la facture (ex: 211 ou 00000211)</label>
       <input type="text" id="maj_num_facture" placeholder="ex: 00000211">
 
-      <label for="maj_montant_cumule">Montant TOTAL payé à ce jour ($)</label>
-      <input type="number" id="maj_montant_cumule" placeholder="ex: 100" step="0.01" min="0">
+      <label for="maj_nouveau_versement">Montant encaissé aujourd'hui ($)</label>
+      <input type="number" id="maj_nouveau_versement" placeholder="ex: 100" step="0.01" min="0">
 
-      <label for="maj_mode_paiement">Mode de paiement du dernier versement</label>
+      <label for="maj_mode_paiement">Mode de paiement de ce versement</label>
       <select id="maj_mode_paiement">
         <option value="Virement Interac" selected>Virement Interac</option>
         <option value="En espèces">En espèces</option>
@@ -144,7 +144,7 @@
   <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
-    tg.MainButton.setText("Générer la facture").show();
+    tg.MainButton.setText("GÉNÉRER LA FACTURE").show();
 
     const PARENTS_DEFAUT = [" "];
     const TUTEURS_DEFAUT = [" "];
@@ -274,11 +274,11 @@
 
       if (actionChoisie === "maj") {
         const numFact = document.getElementById("maj_num_facture").value.trim();
-        const montantCumule = parseFloat(document.getElementById("maj_montant_cumule").value) || 0;
+        const montant = parseFloat(document.getElementById("maj_nouveau_versement").value) || 0;
         const modePaiement = document.getElementById("maj_mode_paiement").value;
 
-        if (!numFact || montantCumule <= 0) {
-          tg.showAlert("Veuillez renseigner le numéro de facture et le montant total payé.");
+        if (!numFact || montant <= 0) {
+          tg.showAlert("Veuillez renseigner le numéro de facture et le montant du versement.");
           return;
         }
 
@@ -286,13 +286,13 @@
         const payload = {
           action: "maj",
           no_facture: numFact,
-          montant_total_paye: montantCumule,
+          nouveau_versement: montant,
           mode_paiement: modePaiement
         };
 
         tg.sendData(JSON.stringify(payload));
         document.getElementById("maj_num_facture").value = "";
-        document.getElementById("maj_montant_cumule").value = "";
+        document.getElementById("maj_nouveau_versement").value = "";
         tg.MainButton.hideProgress();
         setTimeout(() => tg.close(), 100);
 
