@@ -22,6 +22,33 @@
       padding: 16px;
       box-sizing: border-box;
     }
+    /* EN-TÊTE ET LOGO */
+    .logo-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .logo-app {
+      width: 75px;
+      height: 75px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+      display: block;
+      margin: 0 auto;
+    }
+    .app-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-color);
+      margin-top: 8px;
+      letter-spacing: -0.5px;
+    }
+    .app-subtitle {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 2px;
+    }
     .card {
       background: var(--card-bg);
       border-radius: 12px;
@@ -70,6 +97,13 @@
   </style>
 </head>
 <body>
+
+  <!-- EN-TÊTE AVEC LE LOGO DOC-TORAT -->
+  <div class="logo-container">
+    <img src="./logo.png" alt="Doc-torat" class="logo-app">
+    <div class="app-title">DOC-TORAT</div>
+    <div class="app-subtitle">Module de Facturation</div>
+  </div>
 
   <!-- CHOIX DU TYPE D'OPÉRATION -->
   <div class="card">
