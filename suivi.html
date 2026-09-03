@@ -128,6 +128,30 @@
       width: 100%;
     }
 
+    .action-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .select-forfait {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      margin-bottom: 12px;
+      background: #ffffff;
+      color: var(--text);
+      outline: none;
+    }
+
+    .select-forfait:focus {
+      border-color: var(--accent);
+    }
+
     .btn-commander {
       width: 100%;
       background: var(--primary);
@@ -154,10 +178,10 @@
       background: #f0fff4;
       border: 1px solid #c6f6d5;
       color: #22543d;
-      padding: 14px;
+      padding: 16px;
       border-radius: 10px;
       font-size: 13px;
-      line-height: 1.4;
+      line-height: 1.5;
       text-align: center;
     }
 
@@ -171,6 +195,7 @@
       font-size: 14px;
       color: var(--text-muted);
       padding: 40px 0;
+      text-align: center;
     }
   </style>
 
@@ -178,19 +203,20 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // COLLE ICI TON BLOC FIREBASECONFIG RÉCUPÉRÉ DANS FIREBASE
+    // Configuration Firebase de ton projet
     const firebaseConfig = {
-      apiKey: "AIzaSyDUmgeU_jG00z-wiQLdGvkc1jEjkmsqqGc",
+      apiKey: "TON_API_KEY",
       authDomain: "doc-torat-suivi.firebaseapp.com",
       projectId: "doc-torat-suivi",
       storageBucket: "doc-torat-suivi.firebasestorage.app",
-      messagingSenderId: "1069786941583",
-      appId: "1:1069786941583:web:4537e52b05bbdc2bab48fa"
+      messagingSenderId: "TON_MESSAGING_SENDER_ID",
+      appId: "TON_APP_ID"
     };
-   
+
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // Conversion d'une valeur numérique en texte lisible (ex: 7.5 -> 7h30)
     function formatDuree(val) {
       if (val === undefined || isNaN(val)) return "0h";
       const h = Math.floor(val);
@@ -198,6 +224,7 @@
       return m === 0 ? `${h}h` : `${h}h${m.toString().padStart(2, '0')}`;
     }
 
+    // Récupération de l'identifiant dans l'URL (?id=lucas_moreau)
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('id');
 
@@ -227,10 +254,10 @@
 
           document.getElementById("btn-commander").onclick = () => commanderHeures(d.nom || studentId);
         } else {
-          loader.innerText = "Élève non trouvé dans la base.";
+          loader.innerText = "Élève non trouvé dans la base. Veuillez contacter votre tuteur.";
         }
       } catch (err) {
-        console.error(err);
+        console.error("Erreur Firestore :", err);
         loader.innerText = "Erreur de chargement du solde.";
       }
     }
@@ -238,14 +265,17 @@
     async function commanderHeures(nomEleve) {
       const btn = document.getElementById("btn-commander");
       const zone = document.getElementById("action-zone");
+      const selectForfait = document.getElementById("choix-forfait");
+      const forfaitChoisi = selectForfait.value;
 
       btn.disabled = true;
       btn.innerText = "Transmission en cours...";
 
       try {
-        // Enregistrement sécurisé de la demande dans Firestore
+        // Écriture de la commande dans Firestore
         await addDoc(collection(db, "commandes"), {
           eleve: nomEleve,
+          forfait: forfaitChoisi,
           date: serverTimestamp(),
           traite: false
         });
@@ -254,13 +284,14 @@
         zone.innerHTML = `
           <div class="confirmation-msg">
             ✅ <strong>Demande transmise avec succès !</strong><br>
+            Forfait sélectionné : <strong>${forfaitChoisi}</strong>.<br>
             Nous traitons votre demande dans les plus brefs délais.
           </div>
         `;
       } catch (e) {
         console.error("Erreur enregistrement commande :", e);
         btn.disabled = false;
-        btn.innerText = "💳 Commander des heures";
+        btn.innerText = "💳 Commander ce forfait";
         alert("Une erreur est survenue lors de la transmission. Veuillez nous contacter directement.");
       }
     }
@@ -302,8 +333,20 @@
       </div>
 
       <div class="action-zone" id="action-zone">
+        <label for="choix-forfait" class="action-label">
+          Renouveler ou ajouter un forfait :
+        </label>
+        <select id="choix-forfait" class="select-forfait">
+          <option value="Abonnement 10h (Présentiel)">Abonnement 10h — Présentiel</option>
+          <option value="Abonnement 20h (Présentiel)">Abonnement 20h — Présentiel</option>
+          <option value="Abonnement 10h (En ligne)">Abonnement 10h — En ligne</option>
+          <option value="Abonnement 20h (En ligne)">Abonnement 20h — En ligne</option>
+          <option value="Préparation BREVET-BAC 10h">Préparation BREVET-BAC (10h)</option>
+          <option value="Autre demande / Sur-mesure">Autre demande spécifique</option>
+        </select>
+
         <button class="btn-commander" id="btn-commander">
-          💳 Commander des heures
+          💳 Commander ce forfait
         </button>
       </div>
 
