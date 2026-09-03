@@ -218,11 +218,21 @@
 
     // Conversion d'une valeur numérique en texte lisible (ex: 7.5 -> 7h30)
     function formatDuree(val) {
-      if (val === undefined || isNaN(val)) return "0h";
-      const h = Math.floor(val);
-      const m = Math.round((val - h) * 60);
-      return m === 0 ? `${h}h` : `${h}h${m.toString().padStart(2, '0')}`;
-    }
+  if (val === undefined || val === null || isNaN(val) || Math.abs(val) < 1e-4) {
+    return "0h";
+  }
+  const signe = val < 0 ? "-" : "";
+  const absVal = Math.abs(val);
+  let h = Math.floor(absVal);
+  let m = Math.round((absVal - h) * 60);
+
+  if (m === 60) {
+    h += 1;
+    m = 0;
+  }
+
+  return m === 0 ? `${signe}${h}h` : `${signe}${h}h${m.toString().padStart(2, '0')}`;
+}
 
     // Récupération de l'identifiant dans l'URL (?id=lucas_moreau)
     const urlParams = new URLSearchParams(window.location.search);
