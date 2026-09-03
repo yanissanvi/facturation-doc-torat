@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suivi Pédagogique — Doc-torat</title>
+  <style>
+    :root {
+      --primary: #1a365d;
+      --accent: #2b6cb0;
+      --bg: #f7fafc;
+      --card-bg: #ffffff;
+      --text: #2d3748;
+      --text-muted: #718096;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 20px 12px;
+      min-height: 100vh;
+    }
+
+    .card {
+      background: var(--card-bg);
+      width: 100%;
+      max-width: 440px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+      padding: 28px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1px solid var(--border);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .logo {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .student-badge {
+      background: #edf2f7;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--primary);
+      margin-bottom: 20px;
+    }
+
+    .gauge-container {
+      width: 100%;
+      background: #edf2f7;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .total-hours {
+      font-size: 42px;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1;
+    }
+
+    .total-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 24px;
+    }
+
+    .detail-box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .detail-val {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .detail-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .action-zone {
+      width: 100%;
+    }
+
+    .btn-commander {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-commander:hover {
+      background: #102a43;
+    }
+
+    .btn-commander:disabled {
+      background: #a0aec0;
+      cursor: not-allowed;
+    }
+
+    .confirmation-msg {
+      background: #f0fff4;
+      border: 1px solid #c6f6d5;
+      color: #22543d;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    .last-update {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 20px;
+    }
+
+    .loader {
+      font-size: 14px;
+      color: var(--text-muted);
+      padding: 40px 0;
+    }
+  </style>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // COLLE ICI TON BLOC FIREBASECONFIG RÉCUPÉRÉ DANS FIREBASE
+    const firebaseConfig = {
+      apiKey: "TON_API_KEY",
+      authDomain: "doc-torat-suivi.firebaseapp.com",
+      projectId: "doc-torat-suivi",
+      storageBucket: "doc-torat-suivi.firebasestorage.app",
+      messagingSenderId: "TON_SENDER_ID",
+      appId: "TON_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    function formatDuree(val) {
+      if (val === undefined || isNaN(val)) return "0h";
+      const h = Math.floor(val);
+      const m = Math.round((val - h) * 60);
+      return m === 0 ? `${h}h` : `${h}h${m.toString().padStart(2, '0')}`;
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const studentId = urlParams.get('id');
+
+    async function chargerDonnees() {
+      const container = document.getElementById("content-container");
+      const loader = document.getElementById("loading-state");
+
+      if (!studentId) {
+        loader.innerText = "⚠️ Lien invalide. Aucun identifiant fourni.";
+        return;
+      }
+
+      try {
+        const docRef = doc(db, "eleves", studentId.toLowerCase().trim());
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const d = docSnap.data();
+          loader.style.display = "none";
+          container.style.display = "flex";
+
+          document.getElementById("student-name").innerText = d.nom || studentId;
+          document.getElementById("total-hours").innerText = formatDuree(d.total);
+          document.getElementById("pres-hours").innerText = formatDuree(d.presentiel);
+          document.getElementById("ligne-hours").innerText = formatDuree(d.en_ligne);
+          document.getElementById("last-update-time").innerText = d.derniere_maj || "Récent";
+
+          document.getElementById("btn-commander").onclick = () => commanderHeures(d.nom || studentId);
+        } else {
+          loader.innerText = "Élève non trouvé dans la base.";
+        }
+      } catch (err) {
+        console.error(err);
+        loader.innerText = "Erreur de chargement du solde.";
+      }
+    }
+
+    async function commanderHeures(nomEleve) {
+      const btn = document.getElementById("btn-commander");
+      const zone = document.getElementById("action-zone");
+
+      btn.disabled = true;
+      btn.innerText = "Transmission en cours...";
+
+      try {
+        // Enregistrement sécurisé de la demande dans Firestore
+        await addDoc(collection(db, "commandes"), {
+          eleve: nomEleve,
+          date: serverTimestamp(),
+          traite: false
+        });
+
+        // Affichage du message de confirmation immédiat
+        zone.innerHTML = `
+          <div class="confirmation-msg">
+            ✅ <strong>Demande transmise avec succès !</strong><br>
+            Nous traitons votre demande dans les plus brefs délais.
+          </div>
+        `;
+      } catch (e) {
+        console.error("Erreur enregistrement commande :", e);
+        btn.disabled = false;
+        btn.innerText = "💳 Commander des heures";
+        alert("Une erreur est survenue lors de la transmission. Veuillez nous contacter directement.");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", chargerDonnees);
+  </script>
+</head>
+<body>
+
+  <div class="card">
+    <div class="header">
+      <div class="logo">DOC-TORAT</div>
+      <div class="subtitle">Espace Suivi & Forfaits</div>
+    </div>
+
+    <div id="loading-state" class="loader">
+      Chargement du dossier élève...
+    </div>
+
+    <div id="content-container" style="display: none; width: 100%; flex-direction: column; align-items: center;">
+      <div class="student-badge" id="student-name">
+        Élève
+      </div>
+
+      <div class="gauge-container">
+        <div class="total-hours" id="total-hours">0h</div>
+        <div class="total-label">Heures restantes au forfait</div>
+      </div>
+
+      <div class="details-grid">
+        <div class="detail-box">
+          <div class="detail-val" id="pres-hours">0h</div>
+          <div class="detail-label">Présentiel</div>
+        </div>
+        <div class="detail-box">
+          <div class="detail-val" id="ligne-hours">0h</div>
+          <div class="detail-label">En ligne</div>
+        </div>
+      </div>
+
+      <div class="action-zone" id="action-zone">
+        <button class="btn-commander" id="btn-commander">
+          💳 Commander des heures
+        </button>
+      </div>
+
+      <div class="last-update">
+        Mis à jour le : <span id="last-update-time">--</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
