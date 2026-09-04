@@ -201,6 +201,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check-compat.js"></script>
     import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // Configuration Firebase de ton projet
@@ -214,6 +215,12 @@
     };
 
     const app = initializeApp(firebaseConfig);
+  
+    const appCheck = firebase.appCheck();
+    appCheck.activate(
+      new firebase.appCheck.ReCaptchaEnterpriseProvider('6LdPS6gtAAAAAGnQUWmV5sXsPYk6Yjc2sLiolwuN'),
+      true
+    );
     const db = getFirestore(app);
 
     // Conversion d'une valeur numérique en texte lisible (ex: 7.5 -> 7h30)
