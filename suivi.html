@@ -243,10 +243,18 @@
       return m === 0 ? `${signe}${h}h` : `${signe}${h}h${m.toString().padStart(2, '0')}`;
     }
 
-    // 5. Récupération de l'identifiant dans l'URL (?id=token)
+    // 5. Récupération avec mémorisation locale
     const urlParams = new URLSearchParams(window.location.search);
-    const studentId = urlParams.get('id');
+    let studentId = urlParams.get('id');
 
+    if (studentId) {
+      // Première visite via le lien complet : on enregistre le token
+      localStorage.setItem('doc_torat_token', studentId.trim());
+    } else {
+      // Visite suivante via le bouton général de l'app Wix : on récupère le token enregistré
+      studentId = localStorage.getItem('doc_torat_token');
+    }
+    
     async function chargerDonnees() {
       const container = document.getElementById("content-container");
       const loader = document.getElementById("loading-state");
