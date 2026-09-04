@@ -242,6 +242,27 @@
 
       return m === 0 ? `${signe}${h}h` : `${signe}${h}h${m.toString().padStart(2, '0')}`;
     }
+    
+    function formaterDateRelative(dateStr) {
+      if (!dateStr || dateStr === "--") return "--";
+  
+      const now = new Date();
+      const jour = String(now.getDate()).padStart(2, '0');
+      const mois = String(now.getMonth() + 1).padStart(2, '0');
+      const annee = now.getFullYear();
+      const dateJour = `${jour}/${mois}/${annee}`;
+    
+      if (dateStr.includes(" à ")) {
+        const [datePart, heurePart] = dateStr.split(" à ");
+        if (datePart.trim() === dateJour) {
+          return `aujourd'hui à ${heurePart.trim()}`;
+        }
+        return `le ${dateStr.trim()}`;
+      }
+    
+      return `le ${dateStr.trim()}`;
+    }
+    
 
     // 5. Récupération avec mémorisation locale
     const urlParams = new URLSearchParams(window.location.search);
@@ -277,7 +298,7 @@
           document.getElementById("total-hours").innerText = formatDuree(d.total);
           document.getElementById("pres-hours").innerText = formatDuree(d.presentiel);
           document.getElementById("ligne-hours").innerText = formatDuree(d.en_ligne);
-          document.getElementById("last-update-time").innerText = d.derniere_maj || "Récent";
+          document.getElementById("last-update-time").innerText = formaterDateRelative(d.maj || d.derniere_maj || "");
 
           document.getElementById("btn-commander").onclick = () => commanderHeures(d.nom || studentId);
         } else {
