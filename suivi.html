@@ -200,11 +200,12 @@
   </style>
 
   <script type="module">
+    // 1. Imports modulaires Firebase v10
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check-compat.js"></script>
+    import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js";
     import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Configuration Firebase de ton projet
+    // 2. Configuration Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDUmgeU_jG00z-wiQLdGvkc1jEjkmsqqGc",
       authDomain: "doc-torat-suivi.firebaseapp.com",
@@ -214,34 +215,35 @@
       appId: "1:1069786941583:web:4537e52b05bbdc2bab48fa"
     };
 
+    // 3. Initialisation Firebase et App Check
     const app = initializeApp(firebaseConfig);
-  
-    const appCheck = firebase.appCheck();
-    appCheck.activate(
-      new firebase.appCheck.ReCaptchaEnterpriseProvider('6LdPS6gtAAAAAGnQUWmV5sXsPYk6Yjc2sLiolwuN'),
-      true
-    );
+
+    const appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider('6LdPS6gtAAAAAGnQUWmV5sXsPYk6Yjc2sLiolwuN'),
+      isTokenAutoRefreshEnabled: true
+    });
+
     const db = getFirestore(app);
 
-    // Conversion d'une valeur numérique en texte lisible (ex: 7.5 -> 7h30)
+    // 4. Fonction de formatage des durées (avec gestion stricte des négatifs)
     function formatDuree(val) {
-  if (val === undefined || val === null || isNaN(val) || Math.abs(val) < 1e-4) {
-    return "0h";
-  }
-  const signe = val < 0 ? "-" : "";
-  const absVal = Math.abs(val);
-  let h = Math.floor(absVal);
-  let m = Math.round((absVal - h) * 60);
+      if (val === undefined || val === null || isNaN(val) || Math.abs(val) < 1e-4) {
+        return "0h";
+      }
+      const signe = val < 0 ? "-" : "";
+      const absVal = Math.abs(val);
+      let h = Math.floor(absVal);
+      let m = Math.round((absVal - h) * 60);
 
-  if (m === 60) {
-    h += 1;
-    m = 0;
-  }
+      if (m === 60) {
+        h += 1;
+        m = 0;
+      }
 
-  return m === 0 ? `${signe}${h}h` : `${signe}${h}h${m.toString().padStart(2, '0')}`;
-}
-</script>
-    // Récupération de l'identifiant dans l'URL (?id=lucas_moreau)
+      return m === 0 ? `${signe}${h}h` : `${signe}${h}h${m.toString().padStart(2, '0')}`;
+    }
+
+    // 5. Récupération de l'identifiant dans l'URL (?id=token)
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('id');
 
@@ -289,7 +291,6 @@
       btn.innerText = "Transmission en cours...";
 
       try {
-        // Écriture de la commande dans Firestore
         await addDoc(collection(db, "commandes"), {
           eleve: nomEleve,
           forfait: forfaitChoisi,
@@ -297,7 +298,6 @@
           traite: false
         });
 
-        // Affichage du message de confirmation immédiat
         zone.innerHTML = `
           <div class="confirmation-msg">
             ✅ <strong>Demande transmise avec succès !</strong><br>
