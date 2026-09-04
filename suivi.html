@@ -13,6 +13,7 @@
       --text: #2d3748;
       --text-muted: #718096;
       --border: #e2e8f0;
+      --success: #2e7d32;
     }
 
     * {
@@ -46,7 +47,7 @@
 
     .header {
       text-align: center;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .logo {
@@ -67,18 +68,55 @@
       padding: 6px 14px;
       border-radius: 20px;
       font-weight: 600;
-      font-size: 15px;
+      font-size: 14px;
       color: var(--primary);
+      margin-bottom: 16px;
+    }
+
+    /* Sélecteur d'onglets épuré */
+    .tab-switch {
+      display: flex;
+      background: #edf2f7;
+      padding: 4px;
+      border-radius: 10px;
+      width: 100%;
       margin-bottom: 20px;
     }
 
+    .tab-btn {
+      flex: 1;
+      padding: 9px 0;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: #ffffff;
+      color: var(--primary);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+    }
+
+    .tab-content {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* VUE 1 : HEURES */
     .gauge-container {
       width: 100%;
       background: #edf2f7;
       border-radius: 12px;
       padding: 20px;
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     .total-hours {
@@ -174,6 +212,89 @@
       cursor: not-allowed;
     }
 
+    /* VUE 2 : RÈGLEMENT & DIAGRAMME SEMI-CIRCULAIRE */
+    .facture-badge {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      background: #edf2f7;
+      padding: 5px 12px;
+      border-radius: 6px;
+    }
+
+    .gauge-wrapper {
+      position: relative;
+      width: 230px;
+      height: 125px;
+      display: flex;
+      justify-content: center;
+      margin: 10px 0 16px 0;
+    }
+
+    .semi-gauge {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .gauge-center-text {
+      position: absolute;
+      bottom: 6px;
+      text-align: center;
+    }
+
+    .solde-du {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1;
+    }
+
+    .solde-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-top: 5px;
+      display: block;
+    }
+
+    .finance-details {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .finance-details strong {
+      color: var(--text);
+    }
+
+    /* ÉLÉMENTS COMMUNS */
+    .last-update {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      letter-spacing: 0.3px;
+      opacity: 0.85;
+    }
+
+    .loader {
+      font-size: 14px;
+      color: var(--text-muted);
+      padding: 40px 0;
+      text-align: center;
+    }
+
     .confirmation-msg {
       background: #f0fff4;
       border: 1px solid #c6f6d5;
@@ -182,19 +303,6 @@
       border-radius: 10px;
       font-size: 13px;
       line-height: 1.5;
-      text-align: center;
-    }
-
-    .last-update {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 20px;
-    }
-
-    .loader {
-      font-size: 14px;
-      color: var(--text-muted);
-      padding: 40px 0;
       text-align: center;
     }
   </style>
@@ -225,7 +333,7 @@
 
     const db = getFirestore(app);
 
-    // 4. Fonction de formatage des durées (avec gestion stricte des négatifs)
+    // 4. Fonctions de formatage
     function formatDuree(val) {
       if (val === undefined || val === null || isNaN(val) || Math.abs(val) < 1e-4) {
         return "0h";
@@ -242,16 +350,16 @@
 
       return m === 0 ? `${signe}${h}h` : `${signe}${h}h${m.toString().padStart(2, '0')}`;
     }
-    
+
     function formaterDateRelative(dateStr) {
       if (!dateStr || dateStr === "--") return "--";
-  
+
       const now = new Date();
       const jour = String(now.getDate()).padStart(2, '0');
       const mois = String(now.getMonth() + 1).padStart(2, '0');
       const annee = now.getFullYear();
       const dateJour = `${jour}/${mois}/${annee}`;
-    
+
       if (dateStr.includes(" à ")) {
         const [datePart, heurePart] = dateStr.split(" à ");
         if (datePart.trim() === dateJour) {
@@ -259,23 +367,31 @@
         }
         return `le ${dateStr.trim()}`;
       }
-    
+
       return `le ${dateStr.trim()}`;
     }
-    
+
+    // Animation de la jauge semi-circulaire (arc de 180°, rayon 40 => longueur π * 40 ≈ 125.66)
+    function majJaugeFinance(paye, total) {
+      const arcLongueur = 125.66;
+      const ratio = total > 0 ? Math.min(Math.max(paye / total, 0), 1) : 1;
+      const offset = arcLongueur * (1 - ratio);
+      const bar = document.getElementById("gauge-progress");
+      if (bar) {
+        bar.style.strokeDashoffset = offset;
+      }
+    }
 
     // 5. Récupération avec mémorisation locale
     const urlParams = new URLSearchParams(window.location.search);
     let studentId = urlParams.get('id');
 
     if (studentId) {
-      // Première visite via le lien complet : on enregistre le token
       localStorage.setItem('doc_torat_token', studentId.trim());
     } else {
-      // Visite suivante via le bouton général de l'app Wix : on récupère le token enregistré
       studentId = localStorage.getItem('doc_torat_token');
     }
-    
+
     async function chargerDonnees() {
       const container = document.getElementById("content-container");
       const loader = document.getElementById("loading-state");
@@ -294,11 +410,24 @@
           loader.style.display = "none";
           container.style.display = "flex";
 
+          // Remplissage Heures
           document.getElementById("student-name").innerText = d.nom || studentId;
           document.getElementById("total-hours").innerText = formatDuree(d.total);
           document.getElementById("pres-hours").innerText = formatDuree(d.presentiel);
           document.getElementById("ligne-hours").innerText = formatDuree(d.en_ligne);
           document.getElementById("last-update-time").innerText = formaterDateRelative(d.maj || d.derniere_maj || "");
+
+          // Remplissage Finances (Sécurisé depuis Firestore)
+          const totalFacture = parseFloat(d.facture_total || 0);
+          const payeFacture = parseFloat(d.facture_paye || 0);
+          const duFacture = parseFloat(d.facture_du ?? (totalFacture - payeFacture));
+
+          document.getElementById("facture-no").innerText = d.facture_no || "Aucune";
+          document.getElementById("facture-du").innerText = `${duFacture.toFixed(2)} $`;
+          document.getElementById("facture-paye").innerText = `${payeFacture.toFixed(2)} $`;
+          document.getElementById("facture-total").innerText = `${totalFacture.toFixed(2)} $`;
+
+          majJaugeFinance(payeFacture, totalFacture);
 
           document.getElementById("btn-commander").onclick = () => commanderHeures(d.nom || studentId);
         } else {
@@ -306,7 +435,7 @@
         }
       } catch (err) {
         console.error("Erreur Firestore :", err);
-        loader.innerText = "Erreur de chargement du solde.";
+        loader.innerText = "Erreur de chargement du dossier.";
       }
     }
 
@@ -342,6 +471,26 @@
       }
     }
 
+    // Gestion du basculement des onglets
+    window.afficherTab = (tab) => {
+      const btnHeures = document.getElementById("tab-btn-heures");
+      const btnReglement = document.getElementById("tab-btn-reglement");
+      const viewHeures = document.getElementById("view-heures");
+      const viewReglement = document.getElementById("view-reglement");
+
+      if (tab === 'heures') {
+        btnHeures.classList.add("active");
+        btnReglement.classList.remove("active");
+        viewHeures.style.display = "flex";
+        viewReglement.style.display = "none";
+      } else {
+        btnReglement.classList.add("active");
+        btnHeures.classList.remove("active");
+        viewHeures.style.display = "none";
+        viewReglement.style.display = "flex";
+      }
+    };
+
     window.addEventListener("DOMContentLoaded", chargerDonnees);
   </script>
 </head>
@@ -363,42 +512,78 @@
         Élève
       </div>
 
-      <div class="gauge-container">
-        <div class="total-hours" id="total-hours">0h</div>
-        <div class="total-label">Heures restantes au forfait</div>
+      <!-- Sélecteur d'onglets épuré -->
+      <div class="tab-switch">
+        <button id="tab-btn-heures" class="tab-btn active" onclick="afficherTab('heures')">⏱️ Mes Heures</button>
+        <button id="tab-btn-reglement" class="tab-btn" onclick="afficherTab('reglement')">💳 Règlement</button>
       </div>
 
-      <div class="details-grid">
-        <div class="detail-box">
-          <div class="detail-val" id="pres-hours">0h</div>
-          <div class="detail-label">Présentiel</div>
+      <!-- ONGLET 1 : SUIVI DES HEURES -->
+      <div id="view-heures" class="tab-content">
+        <div class="gauge-container">
+          <div class="total-hours" id="total-hours">0h</div>
+          <div class="total-label">Heures restantes au forfait</div>
         </div>
-        <div class="detail-box">
-          <div class="detail-val" id="ligne-hours">0h</div>
-          <div class="detail-label">En ligne</div>
+
+        <div class="details-grid">
+          <div class="detail-box">
+            <div class="detail-val" id="pres-hours">0h</div>
+            <div class="detail-label">Présentiel</div>
+          </div>
+          <div class="detail-box">
+            <div class="detail-val" id="ligne-hours">0h</div>
+            <div class="detail-label">En ligne</div>
+          </div>
+        </div>
+
+        <div class="action-zone" id="action-zone">
+          <label for="choix-forfait" class="action-label">
+            Renouveler ou ajouter un forfait :
+          </label>
+          <select id="choix-forfait" class="select-forfait">
+            <optgroup label="📍 Présentiel">
+              <option value="Abonnement 5h (Présentiel) - 215$">Abonnement 5h — 215 $</option>
+              <option value="Abonnement 10h (Présentiel) - 400$">Abonnement 10h — 400 $</option>
+              <option value="Abonnement 20h (Présentiel) - 760$">Abonnement 20h — 760 $</option>
+            </optgroup>
+            <optgroup label="💻 En ligne">
+              <option value="Abonnement 5h (En ligne) - 190$">Abonnement 5h — 190 $</option>
+              <option value="Abonnement 10h (En ligne) - 350$">Abonnement 10h — 350 $</option>
+              <option value="Abonnement 20h (En ligne) - 660$">Abonnement 20h — 660 $</option>
+            </optgroup>
+          </select>
+
+          <button class="btn-commander" id="btn-commander">
+            💳 Commander ce forfait
+          </button>
         </div>
       </div>
 
-      <div class="action-zone" id="action-zone">
-        <label for="choix-forfait" class="action-label">
-          Renouveler ou ajouter un forfait :
-        </label>
-        <select id="choix-forfait" class="select-forfait">
-          <optgroup label="📍 Présentiel">
-            <option value="Abonnement 5h (Présentiel) - 215$">Abonnement 5h — 215 $</option>
-            <option value="Abonnement 10h (Présentiel) - 400$">Abonnement 10h — 400 $</option>
-            <option value="Abonnement 20h (Présentiel) - 760$">Abonnement 20h — 760 $</option>
-          </optgroup>
-          <optgroup label="💻 En ligne">
-            <option value="Abonnement 5h (En ligne) - 190$">Abonnement 5h — 190 $</option>
-            <option value="Abonnement 10h (En ligne) - 350$">Abonnement 10h — 350 $</option>
-            <option value="Abonnement 20h (En ligne) - 660$">Abonnement 20h — 660 $</option>
-          </optgroup>
-        </select>
+      <!-- ONGLET 2 : STATUT DE RÈGLEMENT (JAUGE CIRCULAIRE) -->
+      <div id="view-reglement" class="tab-content" style="display: none;">
+        <div class="facture-badge">
+          Dernière facture : n° <strong id="facture-no">--</strong>
+        </div>
 
-        <button class="btn-commander" id="btn-commander">
-          💳 Commander ce forfait
-        </button>
+        <div class="gauge-wrapper">
+          <svg viewBox="0 0 100 58" class="semi-gauge">
+            <!-- Arc d'arrière-plan (Total) -->
+            <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#edf2f7" stroke-width="8" stroke-linecap="round" />
+            <!-- Arc de progression (Payé) -->
+            <path id="gauge-progress" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#1a365d" stroke-width="8"
+                  stroke-dasharray="125.66" stroke-dashoffset="125.66" stroke-linecap="round"
+                  style="transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);" />
+          </svg>
+          <div class="gauge-center-text">
+            <span class="solde-du" id="facture-du">0.00 $</span>
+            <span class="solde-label">Reste à payer</span>
+          </div>
+        </div>
+
+        <div class="finance-details">
+          <span>Réglé : <strong id="facture-paye">0.00 $</strong></span>
+          <span>Total facture : <strong id="facture-total">0.00 $</strong></span>
+        </div>
       </div>
 
       <div class="last-update">
