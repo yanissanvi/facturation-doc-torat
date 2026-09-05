@@ -551,17 +551,12 @@
         contImpayees.style.display = "flex";
         listImpayees.innerHTML = impayees.map(f => {
           const solde = parseFloat(f.solde ?? (f.total - (f.paye || 0))).toFixed(2);
-          const acompte = parseFloat(f.paye || 0);
-          const detailAcompte = acompte > 0 
-            ? `<span style="font-size: 11px; color: #b91c1c; font-weight: 500;">(Acompte : ${acompte.toFixed(2)}&nbsp;$)</span>` 
-            : '';
 
           return `
             <div class="past-invoice-row impayee">
               <div class="past-invoice-meta">
                 <span class="past-invoice-no">Facture n° ${f.no}</span>
                 <span class="past-invoice-date">Émise le ${f.date || '--'}</span>
-                ${detailAcompte}
               </div>
               <span class="past-invoice-tag-danger">Dû&nbsp;: ${solde}&nbsp;$ ✗</span>
             </div>
