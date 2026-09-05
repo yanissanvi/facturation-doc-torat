@@ -16,6 +16,8 @@
       --text-muted: #718096;
       --border: #e2e8f0;
       --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
     }
 
     * {
@@ -236,6 +238,10 @@
       overflow: visible;
     }
 
+    #gauge-progress {
+      transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s ease;
+    }
+
     .gauge-center-text {
       position: absolute;
       bottom: 6px;
@@ -247,6 +253,7 @@
       font-weight: 800;
       color: var(--primary);
       line-height: 1;
+      transition: color 0.4s ease;
     }
 
     .solde-label {
@@ -257,6 +264,24 @@
       letter-spacing: 0.5px;
       margin-top: 5px;
       display: block;
+    }
+
+    /* Paliers de couleurs dynamiques */
+    .color-success {
+      color: var(--success) !important;
+      stroke: var(--success) !important;
+    }
+    .color-warning {
+      color: var(--warning) !important;
+      stroke: var(--warning) !important;
+    }
+    .color-danger {
+      color: var(--danger) !important;
+      stroke: var(--danger) !important;
+    }
+    .color-neutral {
+      color: var(--text-muted) !important;
+      stroke: #cbd5e1 !important;
     }
 
     .finance-details {
@@ -426,13 +451,55 @@
       return `le ${dateStr.trim()}`;
     }
 
-    function majJaugeFinance(paye, total) {
+    function majJaugeFinance(paye, total, solde, factureNo) {
       const arcLongueur = 125.66;
-      const ratio = total > 0 ? Math.min(Math.max(paye / total, 0), 1) : 1;
-      const offset = arcLongueur * (1 - ratio);
       const bar = document.getElementById("gauge-progress");
+      const soldeEl = document.getElementById("facture-du");
+      const soldeLabelEl = document.querySelector(".solde-label");
+
+      // Reset des styles dynamiques
+      const classes = ["color-success", "color-warning", "color-danger", "color-neutral"];
+      if (soldeEl) soldeEl.classList.remove(...classes);
+      if (bar) bar.classList.remove(...classes);
+
+      // Cas 1 : Aucune facture active ou compte sans solde
+      if (!factureNo || factureNo === "Aucune" || total <= 0) {
+        if (bar) {
+          bar.style.strokeDashoffset = arcLongueur;
+          bar.classList.add("color-neutral");
+        }
+        if (soldeEl) {
+          soldeEl.classList.add("color-neutral");
+        }
+        if (soldeLabelEl) soldeLabelEl.textContent = "Aucun solde";
+        return;
+      }
+
+      // Calcul du ratio d'avancement (0 à 1)
+      const ratio = Math.min(Math.max(paye / total, 0), 1);
+      const offset = arcLongueur * (1 - ratio);
+
       if (bar) {
         bar.style.strokeDashoffset = offset;
+      }
+
+      // Cas 2 : Facture totalement réglée
+      if (solde <= 0.01) {
+        if (soldeEl) soldeEl.classList.add("color-success");
+        if (bar) bar.classList.add("color-success");
+        if (soldeLabelEl) soldeLabelEl.textContent = "Réglé ✓";
+      }
+      // Cas 3 : Paiement partiel (acompte reçu mais solde restant)
+      else if (paye > 0.01) {
+        if (soldeEl) soldeEl.classList.add("color-warning");
+        if (bar) bar.classList.add("color-warning");
+        if (soldeLabelEl) soldeLabelEl.textContent = "Reste à payer";
+      }
+      // Cas 4 : Non payé (aucun versement)
+      else {
+        if (soldeEl) soldeEl.classList.add("color-danger");
+        if (bar) bar.classList.add("color-danger");
+        if (soldeLabelEl) soldeLabelEl.textContent = "À payer";
       }
     }
 
@@ -495,13 +562,14 @@
           const totalFacture = parseFloat(d.facture_total || 0);
           const payeFacture = parseFloat(d.facture_paye || 0);
           const duFacture = parseFloat(d.facture_du ?? (totalFacture - payeFacture));
+          const noFacture = d.facture_no || "Aucune";
 
-          document.getElementById("facture-no").innerText = d.facture_no || "Aucune";
+          document.getElementById("facture-no").innerText = noFacture;
           document.getElementById("facture-du").innerText = `${duFacture.toFixed(2)} $`;
           document.getElementById("facture-paye").innerText = `${payeFacture.toFixed(2)} $`;
           document.getElementById("facture-total").innerText = `${totalFacture.toFixed(2)} $`;
 
-          majJaugeFinance(payeFacture, totalFacture);
+          majJaugeFinance(payeFacture, totalFacture, duFacture, noFacture);
           afficherHistoriqueFactures(d.factures_passees);
 
           document.getElementById("btn-commander").onclick = () => commanderHeures(d.nom || studentId);
@@ -642,8 +710,7 @@
           <svg viewBox="0 0 100 58" class="semi-gauge">
             <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#edf2f7" stroke-width="8" stroke-linecap="round" />
             <path id="gauge-progress" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#1a365d" stroke-width="8"
-                  stroke-dasharray="125.66" stroke-dashoffset="125.66" stroke-linecap="round"
-                  style="transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);" />
+                  stroke-dasharray="125.66" stroke-dashoffset="125.66" stroke-linecap="round" />
           </svg>
           <div class="gauge-center-text">
             <span class="solde-du" id="facture-du">0.00 $</span>
