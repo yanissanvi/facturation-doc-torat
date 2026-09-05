@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Suivi Pédagogique — Doc-torat</title>
-  <link rel="icon" type="image/jpeg" href="./bonlogo.png">
-  <link rel="apple-touch-icon" href="./bonlogo.png">
+  <link rel="icon" type="image/jpeg" href="./bonlogo.jpg">
+  <link rel="apple-touch-icon" href="./bonlogo.jpg">
   <style>
     :root {
       --primary: #1a365d;
@@ -126,6 +126,23 @@
       font-weight: 800;
       color: var(--primary);
       line-height: 1;
+      transition: color 0.3s ease;
+    }
+
+    .heures-negatives {
+      color: var(--danger) !important;
+    }
+
+    .banner-renouvellement {
+      margin-top: 14px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: center;
     }
 
     .total-label {
@@ -457,12 +474,10 @@
       const soldeEl = document.getElementById("facture-du");
       const soldeLabelEl = document.querySelector(".solde-label");
 
-      // Reset des styles dynamiques
       const classes = ["color-success", "color-warning", "color-danger", "color-neutral"];
       if (soldeEl) soldeEl.classList.remove(...classes);
       if (bar) bar.classList.remove(...classes);
 
-      // Cas 1 : Aucune facture active ou compte sans solde
       if (!factureNo || factureNo === "Aucune" || total <= 0) {
         if (bar) {
           bar.style.strokeDashoffset = arcLongueur;
@@ -475,7 +490,6 @@
         return;
       }
 
-      // Calcul du ratio d'avancement (0 à 1)
       const ratio = Math.min(Math.max(paye / total, 0), 1);
       const offset = arcLongueur * (1 - ratio);
 
@@ -483,20 +497,15 @@
         bar.style.strokeDashoffset = offset;
       }
 
-      // Cas 2 : Facture totalement réglée
       if (solde <= 0.01) {
         if (soldeEl) soldeEl.classList.add("color-success");
         if (bar) bar.classList.add("color-success");
         if (soldeLabelEl) soldeLabelEl.textContent = "Réglé ✓";
-      }
-      // Cas 3 : Paiement partiel (acompte reçu mais solde restant)
-      else if (paye > 0.01) {
+      } else if (paye > 0.01) {
         if (soldeEl) soldeEl.classList.add("color-warning");
         if (bar) bar.classList.add("color-warning");
         if (soldeLabelEl) soldeLabelEl.textContent = "Reste à payer";
-      }
-      // Cas 4 : Non payé (aucun versement)
-      else {
+      } else {
         if (soldeEl) soldeEl.classList.add("color-danger");
         if (bar) bar.classList.add("color-danger");
         if (soldeLabelEl) soldeLabelEl.textContent = "À payer";
@@ -554,7 +563,27 @@
           container.style.display = "flex";
 
           document.getElementById("student-name").innerText = d.nom || studentId;
-          document.getElementById("total-hours").innerText = formatDuree(d.total);
+          
+          // Mise à jour des heures et détection de solde négatif
+          const totalVal = parseFloat(d.total) || 0;
+          const totalHoursEl = document.getElementById("total-hours");
+          totalHoursEl.innerText = formatDuree(totalVal);
+
+          let alertZone = document.getElementById("alerte-solde-negatif");
+          if (totalVal < 0) {
+            totalHoursEl.classList.add("heures-negatives");
+            if (!alertZone) {
+              alertZone = document.createElement("div");
+              alertZone.id = "alerte-solde-negatif";
+              alertZone.className = "banner-renouvellement";
+              totalHoursEl.parentElement.appendChild(alertZone);
+            }
+            alertZone.innerHTML = `⚠️ <strong>Forfait dépassé :</strong> Votre forfait actuel est épuisé. Pensez à sélectionner un forfait ci-dessous pour continuer l'accompagnement sereinement.`;
+          } else {
+            totalHoursEl.classList.remove("heures-negatives");
+            if (alertZone) alertZone.remove();
+          }
+
           document.getElementById("pres-hours").innerText = formatDuree(d.presentiel);
           document.getElementById("ligne-hours").innerText = formatDuree(d.en_ligne);
           document.getElementById("last-update-time").innerText = formaterDateRelative(d.maj || d.derniere_maj || "");
@@ -602,8 +631,8 @@
         zone.innerHTML = `
           <div class="confirmation-msg">
             ✅ <strong>Demande transmise avec succès !</strong><br>
-            Forfait sélectionné : <strong>${forfaitChoisi}</strong>.<br>
-            Nous traitons votre demande dans les plus brefs délais.
+            Forfait sélectionné : <strong>${forfaitChoisi}</strong>.<br><br>
+            💳 <strong>Règlement :</strong> Veuillez effectuer un virement Interac ou me contacter par téléphone si vous avez la moindre question.
           </div>
         `;
       } catch (e) {
