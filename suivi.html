@@ -238,6 +238,7 @@
       background: #edf2f7;
       padding: 5px 12px;
       border-radius: 6px;
+      text-align: center;
     }
 
     .gauge-wrapper {
@@ -318,7 +319,7 @@
 
     .past-invoices-section {
       width: 100%;
-      margin-top: 24px;
+      margin-top: 20px;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -332,11 +333,20 @@
       letter-spacing: 0.5px;
     }
 
+    .past-invoices-title.danger {
+      color: var(--danger);
+    }
+
     .past-invoices-list {
       background: #f8fafc;
       border: 1px solid var(--border);
       border-radius: 10px;
       overflow: hidden;
+    }
+
+    .past-invoices-list.impayees {
+      background: #fff5f5;
+      border-color: #fed7d7;
     }
 
     .past-invoice-row {
@@ -346,6 +356,10 @@
       padding: 10px 14px;
       font-size: 13px;
       border-bottom: 1px solid var(--border);
+    }
+
+    .past-invoice-row.impayee {
+      border-bottom: 1px solid #fee2e2;
     }
 
     .past-invoice-row:last-child {
@@ -371,6 +385,15 @@
     .past-invoice-tag {
       font-weight: 700;
       color: var(--success);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .past-invoice-tag-danger {
+      font-weight: 700;
+      color: var(--danger);
       font-size: 13px;
       display: flex;
       align-items: center;
@@ -512,28 +535,53 @@
       }
     }
 
-    function afficherHistoriqueFactures(factures) {
-      const container = document.getElementById("section-historique-factures");
-      const listElem = document.getElementById("past-invoices-list");
+    function afficherFacturesDetaillées(impayees, acquittees) {
+      // 1. Factures impayées
+      const contImpayees = document.getElementById("section-factures-impayees");
+      const listImpayees = document.getElementById("list-factures-impayees");
 
-      if (!factures || factures.length === 0) {
-        container.style.display = "none";
-        return;
+      if (impayees && impayees.length > 0) {
+        contImpayees.style.display = "flex";
+        listImpayees.innerHTML = impayees.map(f => {
+          const solde = parseFloat(f.solde ?? (f.total - (f.paye || 0))).toFixed(2);
+          const acompte = parseFloat(f.paye || 0);
+          const detailAcompte = acompte > 0 ? `<span style="font-size:10px; color:#b91c1c;">(Acompte : ${acompte.toFixed(2)} $)</span>` : '';
+
+          return `
+            <div class="past-invoice-row impayee">
+              <div class="past-invoice-meta">
+                <span class="past-invoice-no">Facture n° ${f.no}</span>
+                <span class="past-invoice-date">Émise le ${f.date || '--'} ${detailAcompte}</span>
+              </div>
+              <span class="past-invoice-tag-danger">Dû : ${solde} $ ✗</span>
+            </div>
+          `;
+        }).join("");
+      } else {
+        contImpayees.style.display = "none";
       }
 
-      container.style.display = "flex";
-      listElem.innerHTML = factures.map(f => {
-        const total = typeof f.total === 'number' ? f.total.toFixed(2) : parseFloat(f.total || 0).toFixed(2);
-        return `
-          <div class="past-invoice-row">
-            <div class="past-invoice-meta">
-              <span class="past-invoice-no">Facture n° ${f.no}</span>
-              <span class="past-invoice-date">${f.date ? 'Émise le ' + f.date : 'Réglée'}</span>
+      // 2. Factures acquittées
+      const contAcquittees = document.getElementById("section-historique-factures");
+      const listAcquittees = document.getElementById("past-invoices-list");
+
+      if (acquittees && acquittees.length > 0) {
+        contAcquittees.style.display = "flex";
+        listAcquittees.innerHTML = acquittees.map(f => {
+          const total = typeof f.total === 'number' ? f.total.toFixed(2) : parseFloat(f.total || 0).toFixed(2);
+          return `
+            <div class="past-invoice-row">
+              <div class="past-invoice-meta">
+                <span class="past-invoice-no">Facture n° ${f.no}</span>
+                <span class="past-invoice-date">${f.date ? 'Émise le ' + f.date : 'Réglée'}</span>
+              </div>
+              <span class="past-invoice-tag">${total} $ ✓</span>
             </div>
-            <span class="past-invoice-tag">${total} $ ✓</span>
-          </div>
-        `;
-      }).join("");
+          `;
+        }).join("");
+      } else {
+        contAcquittees.style.display = "none";
+      }
     }
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -563,7 +611,7 @@
           container.style.display = "flex";
 
           document.getElementById("student-name").innerText = d.nom || studentId;
-          
+
           // Mise à jour des heures et détection de solde négatif
           const totalVal = parseFloat(d.total) || 0;
           const totalHoursEl = document.getElementById("total-hours");
@@ -599,7 +647,7 @@
           document.getElementById("facture-total").innerText = `${totalFacture.toFixed(2)} $`;
 
           majJaugeFinance(payeFacture, totalFacture, duFacture, noFacture);
-          afficherHistoriqueFactures(d.factures_passees);
+          afficherFacturesDetaillées(d.factures_impayees || [], d.factures_passees || []);
 
           document.getElementById("btn-commander").onclick = () => commanderHeures(d.nom || studentId);
         } else {
@@ -632,7 +680,7 @@
           <div class="confirmation-msg">
             ✅ <strong>Demande transmise avec succès !</strong><br>
             Forfait sélectionné : <strong>${forfaitChoisi}</strong>.<br><br>
-            💳 <strong>Règlement :</strong> Veuillez effectuer un virement Interac ou me contacter par téléphone si vous avez la moindre question.
+            💳 <strong>Règlement :</strong> Veuillez effectuer un virement Interac à <em>doc-torat@outlook.com</em> ou me contacter par téléphone si vous avez la moindre question.
           </div>
         `;
       } catch (e) {
@@ -669,7 +717,7 @@
 
   <div class="card">
     <div class="header">
-      <img src="./logo.jpg" alt="Doc-torat Logo" style="width: 85px; height: auto; margin-bottom: 8px; border-radius: 50%;">
+      <img src="./bonlogo.jpg" alt="Doc-torat Logo" style="width: 85px; height: auto; margin-bottom: 8px; border-radius: 50%;">
       <div class="logo">DOC-TORAT</div>
       <div class="subtitle">Espace Suivi & Forfaits</div>
     </div>
@@ -752,7 +800,13 @@
           <span>Total facture : <strong id="facture-total">0.00 $</strong></span>
         </div>
 
-        <!-- SECTION HISTORIQUE DES FACTURES -->
+        <!-- SECTION 1 : FACTURES EN ATTENTE DE RÈGLEMENT -->
+        <div class="past-invoices-section" id="section-factures-impayees" style="display: none;">
+          <span class="past-invoices-title danger">⚠️ Factures en attente</span>
+          <div class="past-invoices-list impayees" id="list-factures-impayees"></div>
+        </div>
+
+        <!-- SECTION 2 : FACTURES ANTÉRIEURES ACQUITTÉES -->
         <div class="past-invoices-section" id="section-historique-factures" style="display: none;">
           <span class="past-invoices-title">📁 Factures antérieures acquittées</span>
           <div class="past-invoices-list" id="past-invoices-list"></div>
